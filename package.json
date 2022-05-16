@@ -1,0 +1,14 @@
+{
+  "name": "react",
+  "version": "1.0.0",
+  "description": "Build your own React",
+  "main": "index.js",
+  "author": "Crazy Urus <crazyurus@vip.qq.com>",
+  "license": "ISC",
+  "scripts": {
+    "start": "vite --open"
+  },
+  "devDependencies": {
+    "vite": "^2.9.9"
+  }
+}
