@@ -4,13 +4,7 @@ function createDOM(fiber) {
   const { type, props } = fiber;
   const dom = type === 'TEXT_ELEMENT' ? document.createTextNode('') : document.createElement(type);
 
-  Object.keys(props).filter(key => !excludeProps.includes(key)).forEach(name => {
-    if (dom instanceof HTMLElement) {
-      dom.setAttribute(name, props[name]);
-    } else {
-      dom[name] = props[name];
-    }
-  });
+  updateDOM(dom, {}, fiber.props);
 
   return dom;
 }
@@ -35,7 +29,11 @@ function updateDOM(dom, prevProps, nextProps) {
   });
 
   Object.keys(nextProps).filter(isProperty).filter(isNew(prevProps, nextProps)).forEach(name => {
-    dom.setAttribute(name, nextProps[name]);
+    if (dom instanceof HTMLElement) {
+      dom.setAttribute(name, nextProps[name]);
+    } else {
+      dom[name] = nextProps[name];
+    }
   });
 }
 

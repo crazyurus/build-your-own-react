@@ -20,3 +20,7 @@ function createTextElement(text) {
     },
   }
 }
+
+export function useState(initialState) {
+  return [initialState, () => { console.log('click') }];
+}
