@@ -70,24 +70,36 @@ function commitWork(fiber) {
     return;
   }
 
-  const domParent = fiber.parent.dom;
+  let domParentFiber = fiber.parent;
+  while (!domParentFiber.dom) {
+    domParentFiber = domParentFiber.parent;
+  }
+  const domParent = domParentFiber.dom;
 
-  if (fiber.effectTag === 'PLACEMENT') {
-    domParent.appendChild(fiber.dom)
-  } else if (fiber.effectTag === 'UPDATE') {
+  if (fiber.effectTag === 'PLACEMENT' && fiber.dom) {
+    domParent.appendChild(fiber.dom);
+  } else if (fiber.effectTag === 'UPDATE' && fiber.dom) {
     updateDOM(fiber.dom, fiber.alternate.props, fiber.props);
   } else if (fiber.effectTag === 'DELETION') {
-    domParent.removeChild(fiber.dom);
+    commitDeletion(fiber.dom, domParent);
   }
 
   commitWork(fiber.child);
   commitWork(fiber.sibling);
 }
 
+function commitDeletion(fiber, domParent) {
+  if (fiber.dom) {
+    domParent.removeChild(fiber.dom);
+  } else {
+    commitDeletion(fiber.child, domParent);
+  }
+}
+
 function workLoop(deadline) {
   let shouldYield = false;
 
-  while (nextUnitOfWork && !shouldYield) {
+  while (nextUnitOfWork) {
     nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
     shouldYield = deadline.timeRemaining() < 1;
   }
@@ -100,16 +112,13 @@ function workLoop(deadline) {
 }
 
 function performUnitOfWork(fiber) {
-  if (!fiber.dom) {
-    fiber.dom = createDOM(fiber);
+  const isFunctionComponent = fiber.type instanceof Function;
+
+  if (isFunctionComponent) {
+    updateFunctionComponent(fiber);
+  } else {
+    updateHostComponent(fiber);
   }
-
-  // if (fiber.parent) {
-  //   fiber.parent.dom.appendChild(fiber.dom);
-  // }
-
-  const elements = fiber.props.children;
-  reconcileChildren(fiber, elements);
 
   if (fiber.child) {
     return fiber.child;
@@ -125,6 +134,20 @@ function performUnitOfWork(fiber) {
   }
 
   return null;
+}
+
+function updateFunctionComponent(fiber) {
+  const children = [fiber.type(fiber.props)];
+  reconcileChildren(fiber, children);
+}
+
+function updateHostComponent(fiber) {
+  if (!fiber.dom) {
+    fiber.dom = createDOM(fiber);
+  }
+
+  const elements = fiber.props.children;
+  reconcileChildren(fiber, elements);
 }
 
 function reconcileChildren(wipFiber, elements) {
