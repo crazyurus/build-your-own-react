@@ -6,7 +6,7 @@
   "author": "Crazy Urus <crazyurus@vip.qq.com>",
   "license": "ISC",
   "scripts": {
-    "start": "vite --open"
+    "start": "vite"
   },
   "devDependencies": {
     "vite": "^2.9.9"
