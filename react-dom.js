@@ -12,6 +12,7 @@ function createDOM(fiber) {
 }
 
 let nextUnitOfWork = null;
+let currentRoot = null;
 let wipRoot = null;
 
 export function render(element, container) {
@@ -20,6 +21,7 @@ export function render(element, container) {
     props: {
       children: [element],
     },
+    alternate: currentRoot,
   };
 
   nextUnitOfWork = wipRoot;
@@ -28,6 +30,7 @@ export function render(element, container) {
 
 function commitRoot() {
   commitWork(wipRoot.child);
+  currentRoot = wipRoot;
   wipRoot = null;
 }
 
@@ -67,6 +70,25 @@ function performUnitOfWork(fiber) {
   // }
 
   const elements = fiber.props.children;
+  reconcileChildren(fiber, elements);
+
+  if (fiber.child) {
+    return fiber.child;
+  }
+
+  let nextFiber = fiber;
+  while (nextFiber) {
+    if (nextFiber.sibling) {
+      return nextFiber.sibling;
+    }
+
+    nextFiber = nextFiber.parent;
+  }
+
+  return null;
+}
+
+function reconcileChildren(fiber, elements) {
   let prevSibling = null;
 
   elements.forEach((element, index) => {
@@ -85,19 +107,4 @@ function performUnitOfWork(fiber) {
 
     prevSibling = newFiber;
   });
-
-  if (fiber.child) {
-    return fiber.child;
-  }
-
-  let nextFiber = fiber;
-  while (nextFiber) {
-    if (nextFiber.sibling) {
-      return nextFiber.sibling;
-    }
-
-    nextFiber = nextFiber.parent;
-  }
-
-  return null;
 }
