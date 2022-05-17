@@ -44,7 +44,7 @@ function performUnitOfWork(fiber) {
     fiber.parent.dom.appendChild(fiber.dom);
   }
 
-  const elements = fiber.props.children || [];
+  const elements = fiber.props.children;
   let prevSibling = null;
 
   elements.forEach((element, index) => {
