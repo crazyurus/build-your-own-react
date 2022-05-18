@@ -4,7 +4,7 @@ function createDOM(fiber) {
   const { type, props } = fiber;
   const dom = type === 'TEXT_ELEMENT' ? document.createTextNode('') : document.createElement(type);
 
-  updateDOM(dom, {}, fiber.props);
+  updateDOM(dom, {}, props);
 
   return dom;
 }
@@ -97,7 +97,7 @@ function commitDeletion(fiber, domParent) {
 function workLoop(deadline) {
   let shouldYield = false;
 
-  while (nextUnitOfWork) {
+  while (nextUnitOfWork && !shouldYield) {
     nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
     shouldYield = deadline.timeRemaining() < 1;
   }
@@ -135,6 +135,8 @@ function performUnitOfWork(fiber) {
 }
 
 function updateFunctionComponent(fiber) {
+  workInProgressHook = null;
+
   const children = [fiber.type(fiber.props)];
   reconcileChildren(fiber, children);
 }
@@ -166,6 +168,7 @@ function reconcileChildren(wipFiber, elements) {
         dom: oldFiber.dom,
         parent: wipFiber,
         alternate: oldFiber,
+        memorizedState: oldFiber.memorizedState,
         effectTag: 'UPDATE',
       };
     } else {
@@ -176,6 +179,7 @@ function reconcileChildren(wipFiber, elements) {
           parent: wipFiber,
           dom: null,
           alternate: null,
+          memorizedState: null,
           effectTag: 'PLACEMENT',
         };
       }
@@ -199,4 +203,77 @@ function reconcileChildren(wipFiber, elements) {
     prevSibling = newFiber;
     index++;
   }
+}
+
+let workInProgressHook = null;
+export function useState(initialState) {
+  let hook;
+  const isMount = currentRoot === null;
+
+  if (isMount) {
+    hook = {
+      memorizedState: initialState,
+      next: null,
+      queue: {
+        pending: null,
+      },
+    };
+
+    if (nextUnitOfWork.memorizedState) {
+      workInProgressHook.next = hook;
+    } else {
+      nextUnitOfWork.memorizedState = hook;
+    }
+
+    workInProgressHook = hook;
+  } else {
+    if (workInProgressHook) {
+      hook = workInProgressHook;
+      workInProgressHook = workInProgressHook.next;
+    } else {
+      hook = nextUnitOfWork.memorizedState;
+      workInProgressHook = hook.next;
+    }
+  }
+
+  let baseState = hook.memorizedState;
+
+  if (hook.queue.pending) {
+    let firstUpdate = hook.queue.pending.next;
+
+    do {
+      const action = firstUpdate.action;
+      baseState = action instanceof Function ? action(baseState) : action;
+      firstUpdate = firstUpdate.next;
+    } while (firstUpdate !== hook.queue.pending.next)
+
+    hook.queue.pending = null;
+    hook.memorizedState = baseState;
+  }
+
+  return [baseState, dispatchAction.bind(null, hook.queue)];
+}
+
+function dispatchAction(queue, action) {
+  const update = {
+    action,
+    next: null,
+  };
+
+  if (queue.pending) {
+    update.next = queue.pending.next;
+    queue.pending.next = update;
+  } else {
+    update.next = update;
+  }
+
+  queue.pending = update;
+
+  wipRoot = {
+    dom: currentRoot.dom,
+    props: currentRoot.props,
+    alternate: currentRoot,
+  };
+  nextUnitOfWork = wipRoot;
+  deletions = [];
 }

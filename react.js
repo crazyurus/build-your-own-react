@@ -1,3 +1,5 @@
+export { useState } from './react-dom';
+
 export function createElement(type, config, ...children) {
   const props = {
     ...config,
@@ -18,9 +20,5 @@ function createTextElement(text) {
       nodeValue: text,
       children: [],
     },
-  }
-}
-
-export function useState(initialState) {
-  return [initialState, () => { console.log('click') }];
+  };
 }
